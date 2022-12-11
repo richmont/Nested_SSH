@@ -1,7 +1,13 @@
-from Nested_SSH import Nested_SSH
+import sys
+sys.path.append('..')
+from src.Nested_SSH import Nested_SSH
 import queue
 from threading import Thread
 import time
+import logging
+logger = logging.getLogger("Threads Nested_SSH")
+logging.basicConfig(level=logging.INFO)
+
 
 
 class t_Nested_SSH():
@@ -32,14 +38,17 @@ class t_Nested_SSH():
         """
         while True:
             maquina = self.fila_maquinas.get()
-            sessao_maquina = Nested_SSH.Destino(self.gateway, maquina)
-            resposta = sessao_maquina.executar(self.comando)
-            self.fila_respostas.put(
-                {"maquina": maquina["ip"],
-                 "resposta": resposta
-                 }
-            )
-            sessao_maquina.encerrar()
+            try:
+                sessao_maquina = Nested_SSH.Destino(self.gateway, maquina)
+                resposta = sessao_maquina.executar(self.comando)
+                self.fila_respostas.put(
+                    {"maquina": maquina["ip"],
+                    "resposta": resposta
+                    }
+                )
+                sessao_maquina.encerrar()
+            except Nested_SSH.erros.FalhaConexao:
+                logger.error(f"Falha de conexão na máquina {maquina['ip']}")
             self.fila_maquinas.task_done()
     
     def preencher_filas_maquinas(self, fila_maquinas: queue.Queue, lista_maquinas: list):
@@ -84,21 +93,8 @@ class t_Nested_SSH():
 
 
 if __name__ == "__main__":
-    lista_maquinas = []
-    for x in range(1,200):
-         lista_maquinas.append({
-            "ip": f"192.168.0.{x}",
-            "port": 22,
-            "login": "usuario",
-            "pwd": "senha"
-            })
-    gateway = {
-        "ip": "servidor",
-        "port": 22,
-        "login": "usuario_gateway",
-        "pwd": "senha_gateway"
-    }
-    t = t_Nested_SSH(lista_maquinas, gateway=gateway, comando="hostname")
+    
+    t = t_Nested_SSH(lista_maquinas, gateway=gateway, comando="")
     for x in t.respostas:
         print("Máquina: ", x["maquina"], " resposta do comando: ", x["resposta"])
         
