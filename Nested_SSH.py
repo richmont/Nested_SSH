@@ -100,6 +100,7 @@ class Nested_SSH():
             Raises:
                 paramiko.ssh_exception.ChannelException: Falha de conexão
             """
+            self._destino_dados = destino_dados
             self._destino = paramiko.SSHClient() 
             self._destino.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             dest_addr = (destino_dados["ip"], destino_dados["port"])
@@ -122,7 +123,7 @@ class Nested_SSH():
             stdin, stdout, stderr = self._destino.exec_command(comando)
             erros = stderr.read().decode().strip("\n")
             if len(erros) != 0:
-                logger.error(f"Erros na execução do comando {comando}: {erros}")
+                logger.error(f"Erros na execução do comando {comando} na máquina {self._destino_dados['ip']}: {erros}")
             return stdout.read().decode().strip("\n")
         
         def encerrar(self):
