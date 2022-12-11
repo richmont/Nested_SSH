@@ -61,7 +61,8 @@ class Nested_SSH():
 
     class Gateway():
         def __init__(self, gateway_dados: dict, timeout:int=1) -> None:
-            """Prepara um servidor intermediário como gateway para uso
+            """Prepara um servidor intermediário como gateway para uso  
+            
         Args:
             gateway_dados (dict): 
                 ip: Endereço do servidor intermediário
@@ -129,11 +130,7 @@ class Nested_SSH():
             Encerra conexão, importante!
             """
             self._destino.close()
+            
 
-g = Nested_SSH.Gateway(gateway)
-d = Nested_SSH.Destino(g, destino)
-print(d.executar("abuble"))
-d.encerrar()
-g.encerrar()
 
 
