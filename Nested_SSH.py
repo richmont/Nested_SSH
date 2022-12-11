@@ -9,47 +9,131 @@ https://stackoverflow.com/questions/35304525/nested-ssh-using-python-paramiko
 """
 
 class Nested_SSH():
-    def __init__(self, timeout=1, **kwargs) -> None:
-        """Classe para comandos SSH utilizando um servidor como intermediário
+    
+    def __init__(self, gateway_dados: dict, timeout=1) -> None:
+        """_summary_
 
         Args:
-            gateway (dict): 
-                ip: Endereço do servidor intermediário
-                port: Porta SSH
-                login: Nome de usuário
-                pwd: Senha
-                            
-            destino (dict): 
-                ip: Endereço da máquina de destino
-                port: Porta SSH
-                login: Nome de usuário
-                pwd: Senha
-                
-            timeout (int, opcional): Limite do tempo de resposta para conexão. Padrão: 1.
+            timeout (int, optional): _description_. Defaults to 1.
         """
-        self.gateway_dados = kwargs["gateway"]
-        self.destino_dados = kwargs["destino"]
+        self.gateway_dados = gateway_dados
         self.timeout = timeout
         
         
-    def executar(self, comando):
+    def executar(self, destino_dados: dict, comando:str):
+        """Executa um comando em servidor usando gateway como ponte
+
+        Args:
+            destino_dados (dict):
+                ip (str): Endereço da máquina de destino
+                port (str): Porta SSH
+                login (str): Nome de usuário
+                pwd (str): Senha
+                
+            comando (str): comando a ser executado no servidor de destino
+
+        Raises:
+            paramiko.ssh_exception.ChannelException: Falha de conexão
+
+        Returns:
+            resposta ao comando executado (str)
+        """
         with paramiko.SSHClient() as gateway:
             gateway.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             gateway.connect(self.gateway_dados["ip"], username=self.gateway_dados['login'], password=self.gateway_dados['pwd'], timeout=self.timeout)
             gateway_transport = gateway.get_transport()
             local_addr = (self.gateway_dados["ip"], self.gateway_dados['port'])
-            with paramiko.SSHClient() as pdv:
-                pdv.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                dest_addr = (self.destino_dados["ip"], self.destino_dados["port"])
+            with paramiko.SSHClient() as destino:
+                destino.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                dest_addr = (destino_dados["ip"], destino_dados["port"])
     
                 try:
                     gateway_channel = gateway_transport.open_channel("direct-tcpip", dest_addr, local_addr)
-                    pdv.connect(self.destino_dados["ip"], username=self.destino_dados["login"], password=self.destino_dados["pwd"], sock=gateway_channel, timeout=self.timeout)
-                    stdin, stdout, stderr = pdv.exec_command(comando)
+                    destino.connect(destino_dados["ip"], username=destino_dados["login"], password=destino_dados["pwd"], sock=gateway_channel, timeout=self.timeout)
+                    stdin, stdout, stderr = destino.exec_command(comando)
+                    erros = stderr.read().decode().strip("\n")
+                    if len(erros) != 0:
+                        logger.error(f"Erros na execução do comando {comando} no endereço {destino_dados['ip']}: {erros}")
                     return stdout.read().decode().strip("\n")
                 except paramiko.ssh_exception.ChannelException:
-                    #logger.error(f"Conexão falhou no endereço: {self.destino_dados['ip']}")
-                    raise paramiko.ssh_exception.ChannelException("Conexão falhou no endereço: ", self.destino_dados['ip'])
+                    #logger.error(f"Conexão falhou no endereço: {destino_dados['ip']}")
+                    raise paramiko.ssh_exception.ChannelException("Conexão falhou no endereço: ", destino_dados['ip'])
 
+    class Gateway():
+        def __init__(self, gateway_dados: dict, timeout:int=1) -> None:
+            """Prepara um servidor intermediário como gateway para uso
+        Args:
+            gateway_dados (dict): 
+                ip: Endereço do servidor intermediário
+                port: Porta SSH
+                login: Nome de usuário
+                pwd: Senha
+            timeout (int, opcional): Limite do tempo de resposta para conexão. Padrão: 1.
+        """
+            self._gateway = paramiko.SSHClient()
+            self._gateway.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self._gateway.connect(gateway_dados["ip"], username=gateway_dados['login'], password=gateway_dados['pwd'], timeout=timeout)
+            self.gateway_transport = self._gateway.get_transport()
+            self.local_addr = (gateway_dados["ip"], gateway_dados['port'])
+
+        def encerrar(self):
+            """Encerra a conexão, importante!
+            """
+            self._gateway.close()
+
+    class Destino():
+        def __init__(self, gateway, destino_dados:dict, timeout:int=1) -> None:
+            """Prepara um servidor de destino, após conexão com gateway, 
+            para executar comando
+
+            Args:
+                gateway (Nested_SSH.Gateway): Gateway SSH preparado para receber conexões
+                destino_dados (dict):
+                    destino_dados (dict): 
+                    ip: Endereço do servidor de execução
+                    port: Porta SSH
+                    login: Nome de usuário
+                    pwd: Senha
+                timeout (int, opcional): Limite do tempo de resposta para conexão. Padrão: 1.
+
+            Raises:
+                paramiko.ssh_exception.ChannelException: Falha de conexão
+            """
+            self._destino = paramiko.SSHClient() 
+            self._destino.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            dest_addr = (destino_dados["ip"], destino_dados["port"])
+            try:
+                gateway_channel = gateway.gateway_transport.open_channel("direct-tcpip", dest_addr, gateway.local_addr)
+                self._destino.connect(destino_dados["ip"], username=destino_dados["login"], password=destino_dados["pwd"], sock=gateway_channel, timeout=timeout)
+            except paramiko.ssh_exception.ChannelException:
+                #logger.error(f"Conexão falhou no endereço: {destino_dados['ip']}")
+                raise paramiko.ssh_exception.ChannelException("Conexão falhou no endereço: ", destino_dados['ip'])
+
+        def executar(self, comando:str) -> str:
+            """Executa um comando no servidor de destino
+
+            Args:
+                comando (str): Comando bash
+
+            Returns:
+                str: Retorno do comando
+            """
+            stdin, stdout, stderr = self._destino.exec_command(comando)
+            erros = stderr.read().decode().strip("\n")
+            if len(erros) != 0:
+                logger.error(f"Erros na execução do comando {comando}: {erros}")
+            return stdout.read().decode().strip("\n")
+        
+        def encerrar(self):
+            """
+            Encerra conexão, importante!
+            """
+            self._destino.close()
+
+g = Nested_SSH.Gateway(gateway)
+d = Nested_SSH.Destino(g, destino)
+print(d.executar("abuble"))
+d.encerrar()
+g.encerrar()
 
 
