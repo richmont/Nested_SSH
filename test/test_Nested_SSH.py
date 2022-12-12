@@ -10,7 +10,7 @@ class Test_Nested_SSH():
         assert True
     
     
-    def test_maquina_ip_incorreto(self, mocker):
+    def test_maquina_exibindo_hostname_correto(self, mocker):
         gateway = {
             "ip": "servidor fake news",
             "port": 22,
@@ -37,7 +37,21 @@ class Test_Nested_SSH():
         g = Nested_SSH(gateway_dados=gateway)
         assert g.executar(destino_dados=maquina, comando="hostname") == "machinename"
         
-
-    
-    
-    
+    def test_ip_incorreto(self):
+        gateway = {
+            "ip": "servidor fake news",
+            "port": 22,
+            "login": "usuario",
+            "pwd": "bazonga"
+        }
+        maquina = {
+            "ip": "servidor fake news",
+            "port": 22,
+            "login": "usuario",
+            "pwd": "bazonga"
+        }
+        try:
+            g = Nested_SSH(gateway_dados=gateway)
+            assert g.executar(destino_dados=maquina, comando="hostname")
+        except Nested_SSH.erros.FalhaConexao:
+            assert True
