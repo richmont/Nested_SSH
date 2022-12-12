@@ -34,7 +34,7 @@ class Nested_SSH():
             comando (str): comando a ser executado no servidor de destino
 
         Raises:
-            paramiko.ssh_exception.ChannelException: Falha de conexão
+            Nested_SSH.erros.FalhaConexao: Falha de conexão
 
         Returns:
             resposta ao comando executado (str)
