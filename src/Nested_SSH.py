@@ -61,9 +61,9 @@ class Nested_SSH():
                         logger.error(f"Erros na execução do comando {comando} no endereço {destino_dados['ip']}: {erros}")
                     return stdout.read().decode().strip("\n")
                 except paramiko.ssh_exception.ChannelException:
-                    #logger.error(f"Conexão falhou no endereço: {destino_dados['ip']}")
-                    raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'])
-
+                    raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'], " e porta ", destino_dados['port'])
+                except paramiko.ssh_exception.AuthenticationException:
+                    raise Nested_SSH.erros.FalhaAutenticacao("Conexão falhou por autenticação, verifique usuário ou senha")
     class Gateway():
         def __init__(self, gateway_dados: dict, timeout:int=1) -> None:
             """Prepara um servidor intermediário como gateway para uso  
@@ -144,6 +144,8 @@ class Nested_SSH():
         class EnderecoIncorreto(Exception):
             pass
         class FalhaConexao(Exception):
+            pass
+        class FalhaAutenticacao(Exception):
             pass
 
 
