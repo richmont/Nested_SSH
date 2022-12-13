@@ -45,6 +45,8 @@ class Nested_SSH():
                 gateway.connect(self.gateway_dados["ip"], username=self.gateway_dados['login'], password=self.gateway_dados['pwd'], timeout=self.timeout)
             except socket.gaierror:
                 raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço do servidor: ", self.gateway_dados["ip"])
+            except socket.timeout:
+                    raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço, tempo de resposta expirou: ", self.gateway_dados['ip'])
             gateway_transport = gateway.get_transport()
             local_addr = (self.gateway_dados["ip"], self.gateway_dados['port'])
             with paramiko.SSHClient() as destino:
@@ -64,6 +66,7 @@ class Nested_SSH():
                     raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'], " e porta ", destino_dados['port'])
                 except paramiko.ssh_exception.AuthenticationException:
                     raise Nested_SSH.erros.FalhaAutenticacao("Conexão falhou por autenticação, verifique usuário ou senha")
+                
     class Gateway():
         def __init__(self, gateway_dados: dict, timeout:int=1) -> None:
             """Prepara um servidor intermediário como gateway para uso  
