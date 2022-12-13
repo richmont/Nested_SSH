@@ -92,7 +92,7 @@ def test_porta_errada(mocker):
         
         porta_local = tupla_endereco_local[1]
         if porta_destino != 22 or porta_local != 22:
-            raise Nested_SSH.erros.FalhaConexao()
+            raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
          
     
     m_connect = mocker.MagicMock()
