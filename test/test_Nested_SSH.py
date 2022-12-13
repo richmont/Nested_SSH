@@ -5,12 +5,8 @@ from src.Nested_SSH import Nested_SSH
 import io
 class Test_Nested_SSH():
     
-    def test_Preparar_ambiente(self):
-        
-        assert True
-    
-    
-    def test_maquina_exibindo_hostname_correto(self, mocker):
+    @pytest.fixture()
+    def preparar_mocks_ssh(self, mocker):
         gateway = {
             "ip": "servidor fake news",
             "port": 22,
@@ -33,7 +29,10 @@ class Test_Nested_SSH():
         mocker.patch("paramiko.SSHClient.get_transport", return_value=mocker.Mock())
         # define os valores de saída para o comando
         mocker.patch("paramiko.SSHClient.exec_command", return_value=(None, saida, erro))
-        
+        return maquina, gateway
+    
+    def test_maquina_exibindo_hostname_correto(self, preparar_mocks_ssh):
+        maquina, gateway = preparar_mocks_ssh
         g = Nested_SSH(gateway_dados=gateway)
         assert g.executar(destino_dados=maquina, comando="hostname") == "machinename"
         
@@ -55,3 +54,6 @@ class Test_Nested_SSH():
             assert g.executar(destino_dados=maquina, comando="hostname")
         except Nested_SSH.erros.FalhaConexao:
             assert True
+    
+    #def test_porta_errada(self,mocker):
+        
