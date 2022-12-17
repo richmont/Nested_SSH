@@ -1,13 +1,12 @@
 import sys
-sys.path.append('..')
-from src.Nested_SSH import Nested_SSH
 import queue
 from threading import Thread
 import time
 import logging
+sys.path.append('..')
+from .Nested_SSH import Nested_SSH
 logger = logging.getLogger("Threads Nested_SSH")
 logging.basicConfig(level=logging.INFO)
-
 
 
 class t_Nested_SSH():
@@ -18,7 +17,7 @@ class t_Nested_SSH():
         self.lista_maquinas = lista_maquinas
         self.fila_maquinas = queue.Queue()
         self.fila_respostas = queue.Queue()
-        
+
         self.gateway = self.preparar_gateway(self.gateway_dados)
         self.executar_threads(num_threads)
         self.preencher_filas_maquinas(self.fila_maquinas, self.lista_maquinas)
@@ -30,7 +29,7 @@ class t_Nested_SSH():
 
     def preparar_gateway(self, gateway_dados):
         return Nested_SSH.Gateway(gateway_dados)
-    
+
     def executar_comando(self):
         """Cria subprocesso que executa o ping pelo sistema operacional
         Usa como base a variável self.fila_ips
@@ -42,15 +41,16 @@ class t_Nested_SSH():
                 sessao_maquina = Nested_SSH.Destino(self.gateway, maquina)
                 resposta = sessao_maquina.executar(self.comando)
                 self.fila_respostas.put(
-                    {"maquina": maquina["ip"],
-                    "resposta": resposta
+                    {
+                        "maquina": maquina["ip"],
+                        "resposta": resposta
                     }
                 )
                 sessao_maquina.encerrar()
             except Nested_SSH.erros.FalhaConexao:
                 logger.error(f"Falha de conexão na máquina {maquina['ip']}")
             self.fila_maquinas.task_done()
-    
+
     def preencher_filas_maquinas(self, fila_maquinas: queue.Queue, lista_maquinas: list):
         """Preenche a fila com valores dos enderecos a serem verificados
 
@@ -80,7 +80,6 @@ class t_Nested_SSH():
                 break  # quebra o laço quando lista fica vazia
         return lista_respostas
 
-    
     def executar_threads(self, num_threads: int) -> None:
         """Executa o comando nested_ssh usando threads
         Args:
@@ -97,5 +96,3 @@ if __name__ == "__main__":
     t = t_Nested_SSH(lista_maquinas, gateway=gateway, comando="")
     for x in t.respostas:
         print("Máquina: ", x["maquina"], " resposta do comando: ", x["resposta"])
-        
-    
