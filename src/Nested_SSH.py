@@ -1,6 +1,7 @@
 import paramiko
 import logging
 import socket
+import struct
 logger = logging.getLogger("Nested_SSH")
 logging.basicConfig(level=logging.INFO)
 logging.getLogger('paramiko').setLevel("WARNING") # evita avisos de cada ação feita via SSH
@@ -17,10 +18,13 @@ class Nested_SSH():
         Args:
             timeout (int, optional): _description_. Defaults to 1.
         """
+
         self.gateway_dados = gateway_dados
+        #if self.gateway_dados["ip"] or self.gateway_dados["port"] or self.gateway_dados["login"] or self.gateway_dados["pwd"] is None:
+        #    raise TypeError("Valores do gateway inválidos, verifique e tente novamente")
+
         self.timeout = timeout
-        
-        
+
     def executar(self, destino_dados: dict, comando:str):
         """Executa um comando em servidor usando gateway como ponte
 
@@ -87,6 +91,10 @@ class Nested_SSH():
                 self.local_addr = (gateway_dados["ip"], gateway_dados['port'])
             except socket.gaierror:
                 raise Nested_SSH.erros.EnderecoIncorreto("Verifique o endereço inserido: ", gateway_dados["ip"])
+            except socket.timeout:
+                raise Nested_SSH.erros.EnderecoIncorreto("Verifique o endereço inserido: ", gateway_dados["ip"], " tempo de espera expirou")
+            except paramiko.ssh_exception.AuthenticationException:
+                raise Nested_SSH.erros.FalhaAutenticacao("Verifique login e senha")
 
         def encerrar(self):
             """Encerra a conexão, importante!
@@ -120,6 +128,8 @@ class Nested_SSH():
                 self._destino.connect(destino_dados["ip"], username=destino_dados["login"], password=destino_dados["pwd"], sock=gateway_channel, timeout=timeout)
             except paramiko.ssh_exception.ChannelException:
                 #logger.error(f"Conexão falhou no endereço: {destino_dados['ip']}")
+                raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'])
+            except struct.error:
                 raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'])
 
         def executar(self, comando:str) -> str:
