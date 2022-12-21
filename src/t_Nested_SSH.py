@@ -11,6 +11,19 @@ logging.basicConfig(level=logging.INFO)
 
 class t_Nested_SSH():
     def __init__(self, lista_maquinas, num_threads:int = 3, **kwargs) -> None:
+        """Envia o mesmo comando SSH para uma lista de máquinas
+
+        Args:
+            lista_maquinas (list): Lista dos endereços das máquinas
+            num_threads (int, optional): Número de threads a serem executadas. Defaults to 3.
+            
+        Kwargs:
+            gateway_dados (dict):
+                ip (str):
+                port (int):
+                login (str):
+                pwd (str):
+        """
         inicio = time.time()
         self.gateway_dados = kwargs["gateway"]
         self.comando = kwargs["comando"]
@@ -43,11 +56,19 @@ class t_Nested_SSH():
                 self.fila_respostas.put(
                     {
                         "maquina": maquina["ip"],
-                        "resposta": resposta
+                        "resposta": resposta,
+                        "conectou": True
                     }
                 )
                 sessao_maquina.encerrar()
             except Nested_SSH.erros.FalhaConexao:
+                self.fila_respostas.put(
+                    {
+                        "maquina": maquina["ip"],
+                        "resposta": False,
+                        "conectou": False
+                    }
+                    )
                 logger.error(f"Falha de conexão na máquina {maquina['ip']}")
             self.fila_maquinas.task_done()
 
