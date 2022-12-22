@@ -3,40 +3,80 @@ sys.path.append('.')
 import pytest
 from src.Nested_SSH import Nested_SSH
 import io
-import paramiko 
+import paramiko
+import socket
 
 
-@pytest.fixture()
-def mock_ssh_conexao_valida(mocker):
-    gateway = {
-        "ip": "servidor fake news",
-        "port": 22,
-        "login": "usuario",
-        "pwd": "bazonga"
-    }
-    maquina = {
-        "ip": "servidor fake news",
-        "port": 22,
-        "login": "usuario",
-        "pwd": "bazonga"
-    }
+def mocker_paramiko_connect_gateway(*args, **kwargs):
+        """
+        Verifica se o login e endereço passado ao objeto connect são o esperado
+        
+        """
+        
+        hostname_inserido = args[0]
+        #assert hostname_inserido == 0
+        senha_inserida = kwargs["password"]
+        login_inserido = kwargs["username"]
+        # se endereço timeout for inserido, sobe exceção socket.timeout
+        if hostname_inserido == "endereco_timeout":
+            raise socket.timeout
+        # se valor do hostname for diferente de "endereco_certo", sobe erro de conexão
+        if hostname_inserido != "endereco_certo_gateway":
+            raise socket.gaierror
+        if senha_inserida != "senha_certa_gateway" or login_inserido != "login_certo_gateway":
+            raise paramiko.AuthenticationException()
+
+def mocker_paramiko_connect_destino(*args, **kwargs):
+        """
+        Verifica se o login e endereço passado ao objeto connect são o esperado
+        
+        """
+        
+        hostname_inserido = args[0]
+        assert hostname_inserido == 0
+        senha_inserida = kwargs["password"]
+        login_inserido = kwargs["username"]
+        # se endereço timeout for inserido, sobe exceção socket.timeout
+        if hostname_inserido == "endereco_timeout":
+            raise socket.timeout
+        # se valor do hostname for diferente de "endereco_certo", sobe erro de conexão
+        
+        if hostname_inserido != "endereco_certo_destino":
+            raise socket.gaierror
+        if senha_inserida != "senha_certa_destino" or login_inserido != "login_certo_destino":
+            raise paramiko.AuthenticationException()
+
+def mocker_paramiko_open_channel_destino(*args):
+    
+    tipo_conexao = args[0]
+    destino_endereco = args[1]
+    gateway_endereco = args[2]
+    
+    if tipo_conexao != 'direct-tcpip':
+        raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
+    
+    if destino_endereco[0] == 'endereco_certo_destino' and destino_endereco[1] == 22:
+        assert True
+    else:
+        raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
+
+    if gateway_endereco[0] == 'endereco_certo_gateway' and gateway_endereco[1] == 22:
+        assert True
+    else:
+        raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
+
+
+
+def mocker_paramiko_exec_command_destino(*args):
+    comando_recebido = args[0]
     # Bytes para que sofram decodificação dentro do método de extrair dados do comando
-    erro = io.BytesIO("mensagem de erro\n".encode())
+    erro = io.BytesIO("\n".encode())
     saida =  io.BytesIO("machinename\n".encode())
+    entrada = io.BytesIO("hostname\n".encode())
     
-    # Mock genérico para método de conectar do Paramiko
-    mocker.patch("paramiko.SSHClient.connect", return_value=mocker.Mock())
-    # Mock genérico para o método de obter transport
-    mocker.patch("paramiko.SSHClient.get_transport", return_value=mocker.Mock())
-    # define os valores de saída para o comando
-    mocker.patch("paramiko.SSHClient.exec_command", return_value=(None, saida, erro))
-    return maquina, gateway
+    if comando_recebido == "hostname":
+        return entrada, saida, erro
 
-    
-def test_maquina_exibindo_hostname_correto(mock_ssh_conexao_valida):
-    maquina, gateway = mock_ssh_conexao_valida
-    g = Nested_SSH(gateway_dados=gateway)
-    assert g.executar(destino_dados=maquina, comando="hostname") == "machinename"
     
 def test_ip_incorreto():
     """
@@ -61,60 +101,109 @@ def test_ip_incorreto():
         assert True
     
 
-
-def test_porta_errada(mocker):
-    
+def test_Gateway_falha_conexao(mocker):
     gateway = {
-        "ip": "endereco_gateway",
+        "ip": "endereco_certo",
         "port": 22222,
         "login": "login_gateway",
         "pwd": "senha_gateway"
     }
-    maquina = {
-        "ip": "endereco_maquina",
-        "port": 22222,
-        "login": "login_maquina",
-        "pwd": "senha_maquina"
-    }
-    # Bytes para que sofram decodificação dentro do método de extrair dados do comando
-    erro = io.BytesIO("mensagem de erro\n".encode())
-    saida =  io.BytesIO("machinename\n".encode())
     
     
-    def side_effect_sobe_excecao_porta_errada(*args):
-        """
-        Verifica se as portas passadas ao objeto são compatíveis com o esperado
-        """
-        tipo_conexao = args[0] # por padrão, direct-tcpip
-        tupla_endereco_destino = args[1] # 0 = ip, 1 = porta
-        tupla_endereco_local = args[2] # 0 = ip, 1 = porta
-        porta_destino = tupla_endereco_destino[1]
-        
-        porta_local = tupla_endereco_local[1]
-        if porta_destino != 22 or porta_local != 22:
-            raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
-         
-    
-    m_connect = mocker.MagicMock()
-    m_transport = mocker.MagicMock()
-    m_open_channel = mocker.MagicMock(return_value=10, side_effect=side_effect_sobe_excecao_porta_errada) # recebe a porta para conexao com maquina
-    m_transport.open_channel = m_open_channel
-    m_get_transport = mocker.MagicMock(return_value=m_transport)
-    m_exec_commmand = mocker.MagicMock(return_value=(None, saida, erro))
-
-    mocker.patch("paramiko.SSHClient.connect", m_connect)
-    mocker.patch("paramiko.SSHClient.get_transport", m_get_transport)
-    mocker.patch("paramiko.SSHClient.exec_command", m_exec_commmand)
     try:
-        g = Nested_SSH(gateway_dados=gateway)
-        g.executar(destino_dados=maquina, comando="hostname")
-    except Nested_SSH.erros.FalhaConexao:
+        g = Nested_SSH.Gateway(gateway_dados=gateway)
+        g.encerrar()
+    except Nested_SSH.erros.EnderecoIncorreto:
         assert True
 
+def test_Gateway_login_incorreto(mocker):
+
+    gateway = {
+        "ip": "endereco_certo_gateway",
+        "port": 22,
+        "login": "login_errado",
+        "pwd": "login_errado"
+    }
+    m_connect = mocker.MagicMock(side_effect=mocker_paramiko_connect_gateway)
+    mocker.patch("paramiko.SSHClient.connect", m_connect)
+    try:
+        g = Nested_SSH.Gateway(gateway_dados=gateway)
+        g.encerrar()
+    except Nested_SSH.erros.FalhaAutenticacao:
+        assert True
+
+
+def test_Destino_tudo_certo(mocker):
+    gateway = {
+        "ip": "endereco_certo_gateway",
+        "port": 22,
+        "login": "login_certo_gateway",
+        "pwd": "senha_certa_gateway"
+    }
+    maquina = {
+        "ip": "endereco_certo_destino",
+        "port": 22,
+        "login": "usuario_certo_destino",
+        "pwd": "senha_certa_destino"
+    }
+    
+    
+    m_gateway_transport = mocker.MagicMock()
+    m_gateway_transport.open_channel = mocker.MagicMock(side_effect=mocker_paramiko_open_channel_destino)
+    m_exec_command_destino = mocker.MagicMock(side_effect=mocker_paramiko_exec_command_destino)    
+    
+    mocker.patch('paramiko.SSHClient.exec_command', m_exec_command_destino)
+    # usa duas versões do connect mocked para gateway, depois para destino
+    
+    m_connect_destino = mocker.MagicMock(side_effect=mocker_paramiko_connect_destino)
+    mocker.patch("paramiko.SSHClient.connect", m_connect_destino)
+    
+    m_connect_gateway = mocker.MagicMock(side_effect=mocker_paramiko_connect_gateway)
+    mocker.patch("paramiko.SSHClient.connect", m_connect_gateway)
+    
+    
+    
+    mocker.patch("paramiko.SSHClient.get_transport", return_value=m_gateway_transport)
+    
+    g = Nested_SSH.Gateway(gateway_dados=gateway)
+    d = Nested_SSH.Destino(g,maquina)
+    resultado = d.executar("hostname")
+    assert resultado == "machinename"
+    d.encerrar()
+    g.encerrar()
+    
     """
-    assert m_connect.call_args_list == [
-            mocker.call('endereco_gateway', username='login_gateway', password='senha_gateway', timeout=1),
-            mocker.call('endereco_maquina', username='login_maquina', password='senha_maquina', sock=10, timeout=1)
-            ]
+def test_Destino_endereco_errado(mocker):
+    gateway = {
+        "ip": "endereco_certo_gateway",
+        "port": 22,
+        "login": "richel277287",
+        "pwd": "Batata;2"
+    }
+    maquina = {
+        "ip": "endereco_certo_gateway",
+        "port": 22,
+        "login": "root",
+        "pwd": "xxxxxx"
+    }
+    
+    # usa duas versões do connect mocked para gateway, depois para destino
+    m_connect = mocker.MagicMock()
+    m_connect.side_effect=[mocker_paramiko_connect_destino, mocker_paramiko_connect_gateway]
+    
+    m_gateway_transport = mocker.MagicMock()
+    m_gateway_transport.open_channel = mocker.MagicMock(side_effect=mocker_paramiko_open_channel_destino)
+    m_exec_command_destino = mocker.MagicMock(side_effect=mocker_paramiko_exec_command_destino)    
+    
+    mocker.patch('paramiko.SSHClient.exec_command', m_exec_command_destino)
+    mocker.patch("paramiko.SSHClient.connect", m_connect)
+    mocker.patch("paramiko.SSHClient.get_transport", return_value=m_gateway_transport)
+    
+    g = Nested_SSH.Gateway(gateway_dados=gateway)
+    d = Nested_SSH.Destino(g,maquina)
+    resultado = d.executar("hostname")
+    assert resultado == "machinename"
+    d.encerrar()
+    g.encerrar()
     """
     
