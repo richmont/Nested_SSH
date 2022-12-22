@@ -131,7 +131,8 @@ class Nested_SSH():
                 raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'])
             except struct.error:
                 raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'])
-
+            except paramiko.ssh_exception.AuthenticationException:
+                raise Nested_SSH.erros.FalhaAutenticacao("Verifique login e senha")
         def executar(self, comando:str) -> str:
             """Executa um comando no servidor de destino
 
