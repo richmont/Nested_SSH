@@ -1,0 +1,19 @@
+image: "python:latest"
+
+before_script:
+  - python --version
+  - pip install virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+  - pip install -r requirements.txt
+
+
+
+stages:
+  - test
+
+test:
+  stage: test
+  script:
+
+  - pytest
