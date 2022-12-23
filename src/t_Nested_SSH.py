@@ -70,6 +70,24 @@ class t_Nested_SSH():
                     }
                     )
                 logger.error(f"Falha de conexão na máquina {maquina['ip']}")
+            except Nested_SSH.erros.FalhaAutenticacao:
+                self.fila_respostas.put(
+                    {
+                        "maquina": maquina["ip"],
+                        "resposta": False,
+                        "conectou": False
+                    }
+                    )
+                logger.error(f"Falha de autenticação, verifique login e senha {maquina['ip']}")
+            except Nested_SSH.erros.EnderecoIncorreto:
+                self.fila_respostas.put(
+                    {
+                        "maquina": maquina["ip"],
+                        "resposta": False,
+                        "conectou": False
+                    }
+                    )
+                logger.error(f"Endereço incorreto: {maquina['ip']}")
             self.fila_maquinas.task_done()
 
     def preencher_filas_maquinas(self, fila_maquinas: queue.Queue, lista_maquinas: list):
@@ -113,7 +131,5 @@ class t_Nested_SSH():
 
 
 if __name__ == "__main__":
-    
-    t = t_Nested_SSH(lista_maquinas, gateway=gateway, comando="")
-    for x in t.respostas:
-        print("Máquina: ", x["maquina"], " resposta do comando: ", x["resposta"])
+
+    pass
