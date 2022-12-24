@@ -278,9 +278,7 @@ def test_Destino_porta_errada(mocker):
         g.encerrar()
     except Nested_SSH.erros.FalhaAutenticacao:
         assert True
-
-
-     
+  
 def test_Destino_endereco_errado(mocker):
     global contador_paramiko_connect
     contador_paramiko_connect=0

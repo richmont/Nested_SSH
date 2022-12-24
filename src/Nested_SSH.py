@@ -52,10 +52,10 @@ class Nested_SSH():
             except socket.timeout:
                     raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço, tempo de resposta expirou: ", self.gateway_dados['ip'])
             gateway_transport = gateway.get_transport()
-            local_addr = (self.gateway_dados["ip"], self.gateway_dados['port'])
+            local_addr = (str(self.gateway_dados["ip"]), int(self.gateway_dados['port']))
             with paramiko.SSHClient() as destino:
                 destino.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                dest_addr = (destino_dados["ip"], destino_dados["port"])
+                dest_addr = (str(destino_dados["ip"]), int(destino_dados["port"]))
         
                 
                 try:
@@ -88,7 +88,7 @@ class Nested_SSH():
             try:
                 self._gateway.connect(gateway_dados["ip"], username=gateway_dados['login'], password=gateway_dados['pwd'], timeout=timeout)
                 self.gateway_transport = self._gateway.get_transport()
-                self.local_addr = (gateway_dados["ip"], gateway_dados['port'])
+                self.local_addr = (str(gateway_dados["ip"]), int(gateway_dados['port']))
             except socket.gaierror:
                 raise Nested_SSH.erros.EnderecoIncorreto("Verifique o endereço inserido: ", gateway_dados["ip"])
             except socket.timeout:
@@ -102,7 +102,7 @@ class Nested_SSH():
             self._gateway.close()
 
     class Destino():
-        def __init__(self, gateway, destino_dados:dict, timeout:int=1) -> None:
+        def __init__(self, gateway, destino_dados:dict, timeout:int=5) -> None:
             """Prepara um servidor de destino, após conexão com gateway, 
             para executar comando
 
@@ -122,16 +122,20 @@ class Nested_SSH():
             self._destino_dados = destino_dados
             self._destino = paramiko.SSHClient() 
             self._destino.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            dest_addr = (destino_dados["ip"], destino_dados["port"])
+            dest_addr = (str(destino_dados["ip"]), int(destino_dados["port"]))
             try:
-                gateway_channel = gateway.gateway_transport.open_channel("direct-tcpip", dest_addr, gateway.local_addr)
-                self._destino.connect(destino_dados["ip"], username=destino_dados["login"], password=destino_dados["pwd"], sock=gateway_channel, timeout=timeout)
+
+                gateway_channel = gateway.gateway_transport.open_channel("direct-tcpip", dest_addr=dest_addr, src_addr=gateway.local_addr)
+                self._destino.connect(destino_dados["ip"], username=destino_dados["login"], password=destino_dados["pwd"], sock=gateway_channel, timeout=timeout, banner_timeout=200)
+                logger.error(f"Conexão bem sucedida: {destino_dados['ip']}")
             except paramiko.ssh_exception.ChannelException:
-                #logger.error(f"Conexão falhou no endereço: {destino_dados['ip']}")
+                logger.error(f"ChannelException: Conexão falhou no endereço: {destino_dados['ip']}")
                 raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'])
             except struct.error:
+                logger.error(f"struct.error: Conexão falhou no endereço: {destino_dados['ip']}")
                 raise Nested_SSH.erros.FalhaConexao("Conexão falhou no endereço: ", destino_dados['ip'])
             except paramiko.ssh_exception.AuthenticationException:
+                logger.error(f"AuthenticationException: Verifique login e senha: {destino_dados['ip']}")
                 raise Nested_SSH.erros.FalhaAutenticacao("Verifique login e senha")
         def executar(self, comando:str) -> str:
             """Executa um comando no servidor de destino
