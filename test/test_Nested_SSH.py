@@ -69,24 +69,39 @@ def mocker_paramiko_connect_destino(*args, **kwargs):
         except KeyError:
             raise KeyError("não recebeu parametro sock, método connect sendo usado na ordem errada")
 
-def mocker_paramiko_open_channel_destino(*args):
+def mocker_paramiko_open_channel_destino(*args, **kwargs):
     
     tipo_conexao = args[0]
-    destino_endereco = args[1]
-    gateway_endereco = args[2]
-    
-    if tipo_conexao != 'direct-tcpip':
-        raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
-    
-    if destino_endereco[0] == 'endereco_certo_destino' and destino_endereco[1] == 22:
-        assert True
-    else:
-        raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
+    try:
+        arg_destino_endereco = args[1]
+        arg_gateway_endereco = args[2]
+        if arg_destino_endereco[0] == 'endereco_certo_destino' and arg_destino_endereco[1] == 22:
+            assert True
+        else:
+            raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
 
-    if gateway_endereco[0] == 'endereco_certo_gateway' and gateway_endereco[1] == 22:
-        assert True
-    else:
-        raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
+        if arg_gateway_endereco[0] == 'endereco_certo_gateway' and arg_gateway_endereco[1] == 22:
+            assert True
+        else:
+            raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
+    except IndexError:
+        kwarg_destino_endereco = kwargs["dest_addr"]
+        kwarg_gateway_endereco = kwargs["src_addr"]
+        
+        if tipo_conexao != 'direct-tcpip':
+            raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
+        
+        
+        
+        if kwarg_destino_endereco[0] == 'endereco_certo_destino' and kwarg_destino_endereco[1] == 22:
+            assert True
+        else:
+            raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
+
+        if kwarg_gateway_endereco[0] == 'endereco_certo_gateway' and kwarg_gateway_endereco[1] == 22:
+            assert True
+        else:
+            raise paramiko.ssh_exception.ChannelException(404, "Conexão falhou, te vira ai")
     # método criaria um objeto a ser inserido no campo "sock" do método connect, então estou retornando True
     return True
 
