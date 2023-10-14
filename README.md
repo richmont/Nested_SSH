@@ -148,3 +148,10 @@ Partindo do princípio que temos 24 máquinas (IPs de 192.168.0.1 a 25) sendo ac
 {'maquina': "192.168.0.11", 'resposta': 'estacao011', 'conectou': True}
 ```
 Nota-se que a ordem de entrada das máquinas, sequencial, foi diferente da ordem de saída, pois cada máquina respondeu em um momento diferente, devido ao paralelismo proporcionado pelas threads. A estação 13 retornou o resultado do comando mais rapidamente que a estação 11.
+
+## Exceções
+Mesmo a classe t_Nested_SSH aproveita as exceções lançadas por Nested_SSH.  
+
+__Nested_SSH.erros.EnderecoIncorreto__: Endereço IP informado, seja do gateway ou da máquina de destino, está incorreto.  
+__Nested_SSH.erros.FalhaAutenticacao__: Login ou senha informado está incorreto.  
+__Nested_SSH.erros.FalhaConexao__: Conexão para gateway ou a máquina de destino foi malsucedida.  
