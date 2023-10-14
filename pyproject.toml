@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "Nested_SSH"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Richelmy Monteiro", email="richmont.contact@protonmail.com" },
 ]
