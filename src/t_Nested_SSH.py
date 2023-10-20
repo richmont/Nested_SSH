@@ -24,6 +24,7 @@ class t_Nested_SSH():
                 port (int):
                 login (str):
                 pwd (str):
+            str_command (str): the command to be executed in the target machines
         """
         start_time = time.time()
         self._gateway_data = kwargs["gateway"]
