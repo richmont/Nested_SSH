@@ -1,10 +1,11 @@
+from .Nested_SSH import Nested_SSH
 import sys
 import queue
 from threading import Thread
 import time
 import logging
 sys.path.append('..')
-from .Nested_SSH import Nested_SSH
+
 logger = logging.getLogger("Threads Nested_SSH")
 logging.basicConfig(level=logging.INFO)
 
@@ -24,105 +25,106 @@ class t_Nested_SSH():
                 login (str):
                 pwd (str):
         """
-        inicio = time.time()
-        self.gateway_data = kwargs["gateway"]
-        self.str_command = kwargs["str_command"]
-        self.list_target_machines = list_target_machines
-        self.queue_machines = queue.Queue()
-        self.queue_responses = queue.Queue()
+        start_time = time.time()
+        self._gateway_data = kwargs["gateway"]
+        self._str_command = kwargs["str_command"]
+        self._list_target_machines = list_target_machines
+        self._queue_machines = queue.Queue()
+        self._queue_responses = queue.Queue()
 
-        self.gateway = self.prepare_gateway(self.gateway_data)
+        self.gateway = self.prepare_gateway(self._gateway_data)
         self.run_threads(num_threads)
-        self.fill_queue_machines(self.queue_machines, self.list_target_machines)
-        self.queue_machines.join()  # aguarda fila terminar
-        self.responses = self.extract_response(self.queue_responses)
-        self.gateway.encerrar()
-        fim = time.time()
-        print("Tempo para executar: ", fim - inicio)
+        self._fill_queue_machines()
+        self._queue_machines.join()  # aguarda fila terminar
+        self.responses = self.extract_response()
+        self.gateway.close()
+        end_time = time.time()
+        print("Time to execute:  ", end_time - start_time)
 
     def prepare_gateway(self, gateway_data):
         return Nested_SSH.Gateway(gateway_data)
 
     def execute_command(self):
-        """Cria subprocesso que executa o ping pelo sistema operacional
-        Usa como base a variável self.fila_ips
-        Preenche self.queue_responses com o resultado
+        """Create subprocess to execute the command in the target machine
+        
+        Fill self._queue_responses
         """
         while True:
-            machine_instance = self.queue_machines.get()
+            machine_instance = self._queue_machines.get()
             try:
-                session_machine = Nested_SSH.target_machine(self.gateway, machine_instance)
-                response = session_machine.executar(self.str_command)
-                self.queue_responses.put(
+                session_machine = Nested_SSH.Target(self.gateway, machine_instance)
+                response = session_machine.execute(self._str_command)
+                self._queue_responses.put(
                     {
                         "machine_instance": machine_instance["ip"],
                         "response": response,
                         "connection_sucessful": True
                     }
                 )
-                session_machine.encerrar()
+                session_machine.close()
             except Nested_SSH.errors.FailedConnection:
-                self.queue_responses.put(
+                self._queue_responses.put(
                     {
                         "machine_instance": machine_instance["ip"],
                         "response": False,
                         "connection_sucessful": False
                     }
                     )
-                logger.error(f"Falha de conexão na máquina {machine_instance['ip']}")
+                logger.error(f"Failed to connect to {machine_instance['ip']}")
             except Nested_SSH.errors.AuthFailed:
-                self.queue_responses.put(
+                self._queue_responses.put(
                     {
                         "machine_instance": machine_instance["ip"],
                         "response": False,
                         "connection_sucessful": False
                     }
                     )
-                logger.error(f"Falha de autenticação, verifique login e senha {machine_instance['ip']}")
-            except Nested_SSH.errors.EnderecoIncorreto:
-                self.queue_responses.put(
+                logger.error(f"Authentication failure, check login and password {machine_instance['ip']}")
+            except Nested_SSH.errors.WrongAddress:
+                self._queue_responses.put(
                     {
                         "machine_instance": machine_instance["ip"],
                         "response": False,
                         "connection_sucessful": False
                     }
                     )
-                logger.error(f"Endereço incorreto: {machine_instance['ip']}")
-            self.queue_machines.task_done()
+                logger.error(f"Wrong address: {machine_instance['ip']}")
+            self._queue_machines.task_done()
 
-    def fill_queue_machines(self, queue_machines: queue.Queue, list_target_machines: list):
+    def _fill_queue_machines(self):
         """Preenche a fila com valores dos enderecos a serem verificados
 
         Args:
             queue_machines (queue.Queue): Objeto fila que guarda os valores
             list_target_machines (list): lista de enderecos recebida pelo objeto
         """
-        for x in list_target_machines:
-            self.queue_machines.put(x)
+        for x in self._list_target_machines:
+            self._queue_machines.put(x)
 
-    def extract_response(self, queue_responses: queue.Queue) -> list:
-        """Obtém a partir da fila de responses
-        a lista dos dicionários com o resultado do processamento
-        Args:
-            queue_responses (queue.Queue): Fila com informações obtidas dos pings
+    def extract_response(self) -> list:
+        """Gets from the response queue
+        the list of dictionaries with the processing result
 
         Returns:
-            list: lista de dicionários com IP(str) e response (bool)
+            list: list of dicts with the keys:
+            machine_instance (str): IP address of the machine
+            "response": False,
+            "connection_sucessful": False
         """
         list_responses = []
         while True:
             try:
-                # obtém valor sem aguardar execução
-                response = queue_responses.get_nowait()
+                # get value without waiting execution
+                response = self._queue_responses.get_nowait()
                 list_responses.append(response)
             except queue.Empty:
-                break  # quebra o laço quando lista fica vazia
+                break  # break the loop when the queue is empty
         return list_responses
 
     def run_threads(self, num_threads: int) -> None:
-        """Executa o str_command nested_ssh usando threads
+        """Run the threads and execute the command
         Args:
-            num_threads (int): Número de threads a ser usada para processo
+            num_threads (int): Number of threads used for executing, keep the same for the number of machines.
         """
         for x in range(1, num_threads):
             proletariat = Thread(target=self.execute_command)

@@ -145,11 +145,11 @@ def test_target_machine_tudo_certo(mocker):
     mocker.patch("paramiko.SSHClient.get_transport", return_value=m_gateway_transport)
     
     g = Nested_SSH.Gateway(gateway_data=gateway)
-    d = Nested_SSH.target_machine(g,machine_instance)
-    resultado = d.executar("hostname")
+    d = Nested_SSH.Target(g,machine_instance)
+    resultado = d.execute("hostname")
     assert resultado == "machinename"
-    d.encerrar()
-    g.encerrar()
+    d.close()
+    g.close()
 
 def test_Gateway_endereco_errado():
     """
@@ -169,7 +169,7 @@ def test_Gateway_endereco_errado():
     }
     try:
         g = Nested_SSH(gateway_data=gateway)
-        assert g.executar(machine_data=machine_instance, str_command="hostname")
+        assert g.execute(machine_data=machine_instance, str_command="hostname")
     except Nested_SSH.errors.FailedConnection:
         assert True
     
@@ -197,8 +197,8 @@ def test_Gateway_porta_errada(mocker):
     
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
-        g.encerrar()
-    except Nested_SSH.errors.EnderecoIncorreto:
+        g.close()
+    except Nested_SSH.errors.WrongAddress:
         assert True
 
 def test_target_machine_porta_errada(mocker):
@@ -231,11 +231,11 @@ def test_target_machine_porta_errada(mocker):
     mocker.patch("paramiko.SSHClient.get_transport", return_value=m_gateway_transport)
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
-        d = Nested_SSH.target_machine(g,machine_instance)
-        resultado = d.executar("hostname")
+        d = Nested_SSH.Target(g,machine_instance)
+        resultado = d.execute("hostname")
         assert resultado == "machinename"
-        d.encerrar()
-        g.encerrar()
+        d.close()
+        g.close()
     except Nested_SSH.errors.FailedConnection:
         assert True
 
@@ -252,7 +252,7 @@ def test_target_machine_login_incorreto(mocker):
     mocker.patch("paramiko.SSHClient.connect", m_connect)
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
-        g.encerrar()
+        g.close()
     except Nested_SSH.errors.AuthFailed:
         assert True
 
@@ -286,11 +286,11 @@ def test_target_machine_porta_errada(mocker):
     mocker.patch("paramiko.SSHClient.get_transport", return_value=m_gateway_transport)
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
-        d = Nested_SSH.target_machine(g,machine_instance)
-        resultado = d.executar("hostname")
+        d = Nested_SSH.Target(g,machine_instance)
+        resultado = d.execute("hostname")
         assert resultado == "machinename"
-        d.encerrar()
-        g.encerrar()
+        d.close()
+        g.close()
     except Nested_SSH.errors.AuthFailed:
         assert True
   
@@ -323,11 +323,11 @@ def test_target_machine_endereco_errado(mocker):
     
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
-        d = Nested_SSH.target_machine(g,machine_instance)
-        resultado = d.executar("hostname")
+        d = Nested_SSH.Target(g,machine_instance)
+        resultado = d.execute("hostname")
         assert resultado == "machinename"
-        d.encerrar()
-        g.encerrar()
+        d.close()
+        g.close()
     except Nested_SSH.errors.FailedConnection:
         assert True
         
@@ -359,12 +359,12 @@ def test_Gateway_timeout(mocker):
     mocker.patch("paramiko.SSHClient.get_transport", return_value=m_gateway_transport)
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
-        d = Nested_SSH.target_machine(g,machine_instance)
-        resultado = d.executar("hostname")
+        d = Nested_SSH.Target(g,machine_instance)
+        resultado = d.execute("hostname")
         assert resultado == "machinename"
-        d.encerrar()
-        g.encerrar()
-    except Nested_SSH.errors.EnderecoIncorreto:
+        d.close()
+        g.close()
+    except Nested_SSH.errors.WrongAddress:
         assert True
         
 def test_target_machine_timeout(mocker):
@@ -395,10 +395,10 @@ def test_target_machine_timeout(mocker):
     mocker.patch("paramiko.SSHClient.get_transport", return_value=m_gateway_transport)
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
-        d = Nested_SSH.target_machine(g,machine_instance)
-        resultado = d.executar("hostname")
+        d = Nested_SSH.Target(g,machine_instance)
+        resultado = d.execute("hostname")
         assert resultado == "machinename"
-        d.encerrar()
-        g.encerrar()
-    except Nested_SSH.errors.EnderecoIncorreto:
+        d.close()
+        g.close()
+    except Nested_SSH.errors.WrongAddress:
         assert True

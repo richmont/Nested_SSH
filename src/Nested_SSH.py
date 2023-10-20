@@ -25,7 +25,7 @@ class Nested_SSH():
 
         self.timeout = timeout
 
-    def executar(self, machine_data: dict, str_command:str):
+    def execute(self, machine_data: dict, str_command:str):
         """Executa um str_command em servidor usando gateway como ponte
 
         Args:
@@ -90,21 +90,21 @@ class Nested_SSH():
                 self.gateway_transport = self._gateway.get_transport()
                 self.local_addr = (str(gateway_data["ip"]), int(gateway_data['port']))
             except socket.gaierror:
-                raise Nested_SSH.errors.EnderecoIncorreto("Verifique o endereço inserido: ", gateway_data["ip"])
+                raise Nested_SSH.errors.WrongAddress("Verifique o endereço inserido: ", gateway_data["ip"])
             except socket.timeout:
-                raise Nested_SSH.errors.EnderecoIncorreto("Verifique o endereço inserido: ", gateway_data["ip"], " tempo de espera expirou")
+                raise Nested_SSH.errors.WrongAddress("Verifique o endereço inserido: ", gateway_data["ip"], " tempo de espera expirou")
             except paramiko.ssh_exception.AuthenticationException:
                 raise Nested_SSH.errors.AuthFailed("Verifique login e senha")
 
-        def encerrar(self):
+        def close(self):
             """Encerra a conexão, importante!
             """
             self._gateway.close()
 
-    class target_machine():
+    class Target():
         def __init__(self, gateway, machine_data:dict, timeout:int=5) -> None:
             """Prepara um servidor de target_machine, após conexão com gateway, 
-            para executar str_command
+            para execute str_command
 
             Args:
                 gateway (Nested_SSH.Gateway): Gateway SSH preparado para receber conexões
@@ -137,7 +137,7 @@ class Nested_SSH():
             except paramiko.ssh_exception.AuthenticationException:
                 logger.error(f"AuthenticationException: Verifique login e senha: {machine_data['ip']}")
                 raise Nested_SSH.errors.AuthFailed("Verifique login e senha")
-        def executar(self, str_command:str) -> str:
+        def execute(self, str_command:str) -> str:
             """Executa um str_command no servidor de target_machine
 
             Args:
@@ -152,14 +152,14 @@ class Nested_SSH():
                 logger.error(f"errors na execução do str_command {str_command} na máquina {self._machine_data['ip']}: {errors}")
             return stdout.read().decode().strip("\n")
         
-        def encerrar(self):
+        def close(self):
             """
             Encerra conexão, importante!
             """
             self._target_machine.close()
     
     class errors():
-        class EnderecoIncorreto(Exception):
+        class WrongAddress(Exception):
             pass
         class FailedConnection(Exception):
             pass
