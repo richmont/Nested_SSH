@@ -12,11 +12,11 @@ logging.basicConfig(level=logging.INFO)
 
 class t_Nested_SSH():
     def __init__(self, list_target_machines, num_threads:int = 3, **kwargs) -> None:
-        """Envia o mesmo str_command SSH para uma lista de máquinas
+        """Send the same comand to a list of machines
 
         Args:
-            list_target_machines (list): Lista dos endereços das máquinas
-            num_threads (int, optional): Número de threads a serem executadas. Defaults to 3.
+            list_target_machines (list): List of machines addresses
+            num_threads (int, optional): Number of threads to execute. Defaults to 3.
             
         Kwargs:
             gateway_data (dict):
@@ -35,13 +35,14 @@ class t_Nested_SSH():
         self.gateway = self.prepare_gateway(self._gateway_data)
         self.run_threads(num_threads)
         self._fill_queue_machines()
-        self._queue_machines.join()  # aguarda fila terminar
+        self._queue_machines.join()  # wait queue end
         self.responses = self.extract_response()
         self.gateway.close()
         end_time = time.time()
         print("Time to execute:  ", end_time - start_time)
 
     def prepare_gateway(self, gateway_data):
+        # replaced in a future version
         return Nested_SSH.Gateway(gateway_data)
 
     def execute_command(self):
@@ -62,7 +63,7 @@ class t_Nested_SSH():
                     }
                 )
                 session_machine.close()
-            except Nested_SSH.errors.FailedConnection:
+            except Nested_SSH.Errors.FailedConnection:
                 self._queue_responses.put(
                     {
                         "machine_instance": machine_instance["ip"],
@@ -70,8 +71,8 @@ class t_Nested_SSH():
                         "connection_sucessful": False
                     }
                     )
-                logger.error(f"Failed to connect to {machine_instance['ip']}")
-            except Nested_SSH.errors.AuthFailed:
+                logger.error("Failed to connect to %s", machine_instance['ip'])
+            except Nested_SSH.Errors.AuthFailed:
                 self._queue_responses.put(
                     {
                         "machine_instance": machine_instance["ip"],
@@ -79,8 +80,8 @@ class t_Nested_SSH():
                         "connection_sucessful": False
                     }
                     )
-                logger.error(f"Authentication failure, check login and password {machine_instance['ip']}")
-            except Nested_SSH.errors.WrongAddress:
+                logger.error("Authentication failure, check login and password %s", machine_instance['ip'])
+            except Nested_SSH.Errors.WrongAddress:
                 self._queue_responses.put(
                     {
                         "machine_instance": machine_instance["ip"],
@@ -88,15 +89,11 @@ class t_Nested_SSH():
                         "connection_sucessful": False
                     }
                     )
-                logger.error(f"Wrong address: {machine_instance['ip']}")
+                logger.error("Wrong address: %s", machine_instance['ip'])
             self._queue_machines.task_done()
 
     def _fill_queue_machines(self):
-        """Preenche a fila com valores dos enderecos a serem verificados
-
-        Args:
-            queue_machines (queue.Queue): Objeto fila que guarda os valores
-            list_target_machines (list): lista de enderecos recebida pelo objeto
+        """Fill the queue with the addresses to be sended
         """
         for x in self._list_target_machines:
             self._queue_machines.put(x)
@@ -107,9 +104,9 @@ class t_Nested_SSH():
 
         Returns:
             list: list of dicts with the keys:
-            machine_instance (str): IP address of the machine
-            "response": False,
-            "connection_sucessful": False
+                - machine_instance (str): IP address of the machine
+                - response (str): output of the command
+                - connection_sucessful (bool): yes
         """
         list_responses = []
         while True:

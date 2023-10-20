@@ -170,7 +170,7 @@ def test_Gateway_endereco_errado():
     try:
         g = Nested_SSH(gateway_data=gateway)
         assert g.execute(machine_data=machine_instance, str_command="hostname")
-    except Nested_SSH.errors.FailedConnection:
+    except Nested_SSH.Errors.FailedConnection:
         assert True
     
 def test_Gateway_porta_errada(mocker):
@@ -198,7 +198,7 @@ def test_Gateway_porta_errada(mocker):
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
         g.close()
-    except Nested_SSH.errors.WrongAddress:
+    except Nested_SSH.Errors.WrongAddress:
         assert True
 
 def test_target_machine_porta_errada(mocker):
@@ -236,7 +236,7 @@ def test_target_machine_porta_errada(mocker):
         assert resultado == "machinename"
         d.close()
         g.close()
-    except Nested_SSH.errors.FailedConnection:
+    except Nested_SSH.Errors.FailedConnection:
         assert True
 
 
@@ -253,7 +253,7 @@ def test_target_machine_login_incorreto(mocker):
     try:
         g = Nested_SSH.Gateway(gateway_data=gateway)
         g.close()
-    except Nested_SSH.errors.AuthFailed:
+    except Nested_SSH.Errors.AuthFailed:
         assert True
 
 def test_target_machine_porta_errada(mocker):
@@ -291,7 +291,7 @@ def test_target_machine_porta_errada(mocker):
         assert resultado == "machinename"
         d.close()
         g.close()
-    except Nested_SSH.errors.AuthFailed:
+    except Nested_SSH.Errors.AuthFailed:
         assert True
   
 def test_target_machine_endereco_errado(mocker):
@@ -328,7 +328,7 @@ def test_target_machine_endereco_errado(mocker):
         assert resultado == "machinename"
         d.close()
         g.close()
-    except Nested_SSH.errors.FailedConnection:
+    except Nested_SSH.Errors.FailedConnection:
         assert True
         
 def test_Gateway_timeout(mocker):
@@ -364,7 +364,7 @@ def test_Gateway_timeout(mocker):
         assert resultado == "machinename"
         d.close()
         g.close()
-    except Nested_SSH.errors.WrongAddress:
+    except Nested_SSH.Errors.WrongAddress:
         assert True
         
 def test_target_machine_timeout(mocker):
@@ -400,5 +400,5 @@ def test_target_machine_timeout(mocker):
         assert resultado == "machinename"
         d.close()
         g.close()
-    except Nested_SSH.errors.WrongAddress:
+    except Nested_SSH.Errors.WrongAddress:
         assert True
