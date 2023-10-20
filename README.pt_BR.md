@@ -151,6 +151,6 @@ Nota-se que a ordem de entrada das máquinas, sequencial, foi diferente da ordem
 ## Exceções
 Mesmo a classe t_Nested_SSH aproveita as exceções lançadas por Nested_SSH.  
 
-__Nested_SSH.Errors.WrongAddress__: Endereço IP informado, seja do gateway ou da máquina de destino, está incorreto.  
-__Nested_SSH.Errors.AuthFailed__: Login ou senha informado está     incorreto.  
-__Nested_SSH.Errors.FailedConnection__: Conexão para gateway ou a máquina de destino foi malsucedida.  
+__Nested_SSH.Errors.WrongAddress__: Endereço IP informado, seja do gateway ou da máquina de destino, está incorreto.    
+__Nested_SSH.Errors.AuthFailed__: Login ou senha informado está incorreto.    
+__Nested_SSH.Errors.FailedConnection__: Conexão para gateway ou a máquina de destino foi malsucedida.    
