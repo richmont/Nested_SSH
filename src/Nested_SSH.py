@@ -13,111 +13,148 @@ https://stackoverflow.com/questions/35304525/nested-ssh-using-python-paramiko
 class Nested_SSH():
     
     def __init__(self, gateway_data: dict, timeout=1) -> None:
-        """_summary_
+        """Allow execution 
 
         Args:
-            timeout (int, optional): _description_. Defaults to 1.
+            timeout (int, optional): Defaults to 1.
         """
 
         self.gateway_data = gateway_data
-        #if self.gateway_data["ip"] or self.gateway_data["port"] or self.gateway_data["login"] or self.gateway_data["pwd"] is None:
-        #    raise TypeError("Valores do gateway inválidos, verifique e tente novamente")
 
         self.timeout = timeout
 
     def execute(self, machine_data: dict, str_command:str):
-        """Executa um str_command em servidor usando gateway como ponte
+        """Execute a command without setup of a Gateway and Target manually
 
         Args:
             machine_data (dict):
-                ip (str): Endereço da máquina de target_machine
-                port (str): Porta SSH
-                login (str): Nome de usuário
-                pwd (str): Senha
+                ip (str): Address of the target machine
+                port (str): SSH port
+                login (str): Username
+                pwd (str): Password
                 
-            str_command (str): str_command a ser executado no servidor de target_machine
+            str_command (str): command to be executed in target machine
 
         Raises:
-            Nested_SSH.errors.FailedConnection: Falha de conexão
+            Nested_SSH.Errors.FailedConnection: Connection failed
 
         Returns:
-            resposta ao str_command executado (str)
+            response to command executed (str)
         """
         with paramiko.SSHClient() as gateway:
             gateway.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:
-                gateway.connect(self.gateway_data["ip"], username=self.gateway_data['login'], password=self.gateway_data['pwd'], timeout=self.timeout)
-            except socket.gaierror:
-                raise Nested_SSH.errors.FailedConnection("Conexão falhou no endereço do servidor: ", self.gateway_data["ip"])
-            except socket.timeout:
-                    raise Nested_SSH.errors.FailedConnection("Conexão falhou no endereço, tempo de response expirou: ", self.gateway_data['ip'])
+                gateway.connect(
+                    self.gateway_data["ip"],
+                    username=self.gateway_data['login'],
+                    password=self.gateway_data['pwd'],
+                    timeout=self.timeout
+                    )
+            except socket.gaierror as e:
+                raise Nested_SSH.Errors.FailedConnection(
+                    "Connection failed at server: ", 
+                    self.gateway_data["ip"]
+                    ) from e
+            except socket.timeout as e:
+                raise Nested_SSH.Errors.FailedConnection(
+                    "Conection failed at address, timeout: ", 
+                    self.gateway_data['ip']
+                    ) from e
             gateway_transport = gateway.get_transport()
             local_addr = (str(self.gateway_data["ip"]), int(self.gateway_data['port']))
             with paramiko.SSHClient() as target_machine:
                 target_machine.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 dest_addr = (str(machine_data["ip"]), int(machine_data["port"]))
-        
-                
+
                 try:
-                    gateway_channel = gateway_transport.open_channel("direct-tcpip", dest_addr, local_addr)
-                    target_machine.connect(machine_data["ip"], username=machine_data["login"], password=machine_data["pwd"], sock=gateway_channel, timeout=self.timeout)
-                    stdin, stdout, stderr = target_machine.exec_command(str_command)
+                    # create a channel connection to the gateway
+                    gateway_channel = gateway_transport.open_channel(
+                        "direct-tcpip", 
+                        dest_addr, 
+                        local_addr
+                        )
+                    # throught it, connect to the target
+                    target_machine.connect(
+                        machine_data["ip"], 
+                        username=machine_data["login"],
+                        password=machine_data["pwd"],
+                        sock=gateway_channel,
+                        timeout=self.timeout
+                        )
+                        # pipe stdin to temp variable, not used
+                    _, stdout, stderr = target_machine.exec_command(str_command)
                     errors = stderr.read().decode().strip("\n")
-                    if len(errors) != 0:
-                        logger.error(f"errors na execução do str_command {str_command} no endereço {machine_data['ip']}: {errors}")
-                    return stdout.read().decode().strip("\n")
-                except paramiko.ssh_exception.ChannelException:
-                    raise Nested_SSH.errors.FailedConnection("Conexão falhou no endereço: ", machine_data['ip'], " e porta ", machine_data['port'])
-                except paramiko.ssh_exception.AuthenticationException:
-                    raise Nested_SSH.errors.AuthFailed("Conexão falhou por autenticação, verifique usuário ou senha")
-                
+                    if len(errors) != 0: # error occurred
+                        logger.error("Errors in execution of %s at address %s: %s", str_command, machine_data['ip'], errors)
+                    return stdout.read().decode().strip("\n") # get the output, clean it and return
+                except paramiko.ssh_exception.ChannelException as e:
+                    raise Nested_SSH.Errors.FailedConnection("connection failed at address: ", machine_data['ip'], " e porta ", machine_data['port'])
+                except paramiko.ssh_exception.AuthenticationException as e:
+                    raise Nested_SSH.Errors.AuthFailed("Connection failed because authentication, check login and password") from e
+
     class Gateway():
+        """Class represents a gateway used to connect to a single or multiple targed machines"""
         def __init__(self, gateway_data: dict, timeout:int=1) -> None:
-            """Prepara um servidor intermediário como gateway para uso  
+            """Prepare a gateway
             
         Args:
             gateway_data (dict): 
-                ip: Endereço do servidor intermediário
-                port: Porta SSH
-                login: Nome de usuário
-                pwd: Senha
-            timeout (int, opcional): Limite do tempo de response para conexão. Padrão: 1.
+                ip: Address
+                port: SSH port
+                login: username
+                pwd: password
+            timeout (int, opt): time limit to connection, default 1
         """
             self._gateway = paramiko.SSHClient()
             self._gateway.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:
-                self._gateway.connect(gateway_data["ip"], username=gateway_data['login'], password=gateway_data['pwd'], timeout=timeout)
+                self._gateway.connect(
+                    gateway_data["ip"],
+                    username=gateway_data['login'],
+                    password=gateway_data['pwd'],
+                    timeout=timeout
+                    )
                 self.gateway_transport = self._gateway.get_transport()
-                self.local_addr = (str(gateway_data["ip"]), int(gateway_data['port']))
-            except socket.gaierror:
-                raise Nested_SSH.errors.WrongAddress("Verifique o endereço inserido: ", gateway_data["ip"])
-            except socket.timeout:
-                raise Nested_SSH.errors.WrongAddress("Verifique o endereço inserido: ", gateway_data["ip"], " tempo de espera expirou")
-            except paramiko.ssh_exception.AuthenticationException:
-                raise Nested_SSH.errors.AuthFailed("Verifique login e senha")
+                # convert port value to int avoiding send str to socket
+                self.local_addr = (
+                    str(gateway_data["ip"]),
+                    int(gateway_data['port'])
+                    )
+            except socket.gaierror as e:
+                raise Nested_SSH.Errors.WrongAddress(
+                    "Check the address inserted: ", 
+                    gateway_data["ip"]
+                    ) from e
+            except socket.timeout as e:
+                raise Nested_SSH.Errors.WrongAddress(
+                    "Check the address inserted: ", 
+                    gateway_data["ip"],
+                    " timeout expired"
+                    ) from e
+            except paramiko.ssh_exception.AuthenticationException as e:
+                raise Nested_SSH.Errors.AuthFailed("Check login and password") from e
 
         def close(self):
-            """Encerra a conexão, importante!
+            """ close connection
             """
             self._gateway.close()
 
     class Target():
+        """Class represents a target machine connected throught a gateway"""
         def __init__(self, gateway, machine_data:dict, timeout:int=5) -> None:
-            """Prepara um servidor de target_machine, após conexão com gateway, 
-            para execute str_command
+            """Prepare a target machine to execute commands
 
             Args:
-                gateway (Nested_SSH.Gateway): Gateway SSH preparado para receber conexões
+                gateway (Nested_SSH.Gateway): Already prepared gateway
                 machine_data (dict):
-                    machine_data (dict): 
-                    ip: Endereço do servidor de execução
-                    port: Porta SSH
-                    login: Nome de usuário
-                    pwd: Senha
-                timeout (int, opcional): Limite do tempo de response para conexão. Padrão: 1.
+                    - ip: Address
+                    - port: SSH port
+                    - login: username
+                    - pwd: password
+                timeout (int, opt): time limit to connection, default 5
 
             Raises:
-                paramiko.ssh_exception.ChannelException: Falha de conexão
+                paramiko.ssh_exception.ChannelException: Failed connection
             """
             self._machine_data = machine_data
             self._target_machine = paramiko.SSHClient() 
@@ -127,43 +164,41 @@ class Nested_SSH():
 
                 gateway_channel = gateway.gateway_transport.open_channel("direct-tcpip", dest_addr=dest_addr, src_addr=gateway.local_addr)
                 self._target_machine.connect(machine_data["ip"], username=machine_data["login"], password=machine_data["pwd"], sock=gateway_channel, timeout=timeout, banner_timeout=200)
-                logger.error(f"Conexão bem sucedida: {machine_data['ip']}")
-            except paramiko.ssh_exception.ChannelException:
-                logger.error(f"ChannelException: Conexão falhou no endereço: {machine_data['ip']}")
-                raise Nested_SSH.errors.FailedConnection("Conexão falhou no endereço: ", machine_data['ip'])
-            except struct.error:
-                logger.error(f"struct.error: Conexão falhou no endereço: {machine_data['ip']}")
-                raise Nested_SSH.errors.FailedConnection("Conexão falhou no endereço: ", machine_data['ip'])
-            except paramiko.ssh_exception.AuthenticationException:
-                logger.error(f"AuthenticationException: Verifique login e senha: {machine_data['ip']}")
-                raise Nested_SSH.errors.AuthFailed("Verifique login e senha")
+                logger.debug("Connection sucessful: %s", machine_data['ip'])
+            except paramiko.ssh_exception.ChannelException as e:
+                logger.error("ChannelException: Connection failed at address: %s", machine_data['ip'])
+                raise Nested_SSH.Errors.FailedConnection("Connection failed at address: ", machine_data['ip']) from e
+            except struct.error as e:
+                logger.error("struct.error: Connection failed at address: %s", machine_data['ip'])
+                raise Nested_SSH.Errors.FailedConnection("Connection failed at address: ", machine_data['ip']) from e
+            except paramiko.ssh_exception.AuthenticationException as e:
+                logger.error("AuthenticationException: Check login and password: %s", machine_data['ip'])
+                raise Nested_SSH.Errors.AuthFailed("Check login and password") from e
         def execute(self, str_command:str) -> str:
-            """Executa um str_command no servidor de target_machine
-
+            """Execute a command
             Args:
-                str_command (str): str_command bash
+                str_command (str): string with the command
 
             Returns:
-                str: Retorno do str_command
+                str: default output of the command
             """
-            stdin, stdout, stderr = self._target_machine.exec_command(str_command)
+            _, stdout, stderr = self._target_machine.exec_command(str_command)
             errors = stderr.read().decode().strip("\n")
             if len(errors) != 0:
-                logger.error(f"errors na execução do str_command {str_command} na máquina {self._machine_data['ip']}: {errors}")
+                logger.error("Error during the execution of command %s in machine %s: %s", str_command, self._machine_data['ip'], errors)
             return stdout.read().decode().strip("\n")
-        
+
         def close(self):
             """
-            Encerra conexão, importante!
+            Close the connection in the target machine
             """
             self._target_machine.close()
-    
-    class errors():
+
+    class Errors():
+        """Store all custom exceptions"""
         class WrongAddress(Exception):
-            pass
+            """Custom exception to wrong address"""
         class FailedConnection(Exception):
-            pass
+            """Custom exception to failed connection"""
         class AuthFailed(Exception):
-            pass
-
-
+            """Custom exception to authentication failed"""
