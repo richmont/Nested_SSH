@@ -1,0 +1,22 @@
+Changelog - Versão 1.0.1 (14 de outubro de 2023)
+
+Mudanças
+
+    A licença do software foi atualizada de GPL para LGPL, permitindo o uso em conjunto com software proprietário.
+    
+
+Novas funcionalidades
+
+    - Adicionado empacotamento do software para facilitar a instalação e distribuição, tornando-o mais acessível para os usuários.
+    - Documentação melhorada com README.md possuindo instruções de parâmetros, retornos e exceções das classes Nested_SSH e t_Nested_SSH.
+
+Changelog - Versão 1.0.0 (22 de dezembro de 2022)
+
+Biblioteca baseada em Paramiko, o cliente SSH para Python.
+
+Novas funcionalidades
+    - Classe base Nested_SSH e derivada compatível com threads, t_Nested_SSH.
+    - Agilidade na execução de comandos em paralelo para múltiplas máquinas
+    - Teste unitário para validar o funcionamento da biblioteca
+    - Configuração de Integração Contínua para gitlab (.gitlab-ci.yml)
+    - Conversão do valor de porta para inteiro antes de enviar ao soquete, evitando que strings causem erros.
