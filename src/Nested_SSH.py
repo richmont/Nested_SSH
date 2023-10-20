@@ -19,9 +19,9 @@ class Nested_SSH():
             timeout (int, optional): Defaults to 1.
         """
 
-        self.gateway_data = gateway_data
+        self._gateway_data = gateway_data
 
-        self.timeout = timeout
+        self._timeout = timeout
 
     def execute(self, machine_data: dict, str_command:str):
         """Execute a command without setup of a Gateway and Target manually
@@ -45,23 +45,23 @@ class Nested_SSH():
             gateway.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:
                 gateway.connect(
-                    self.gateway_data["ip"],
-                    username=self.gateway_data['login'],
-                    password=self.gateway_data['pwd'],
-                    timeout=self.timeout
+                    self._gateway_data["ip"],
+                    username=self._gateway_data['login'],
+                    password=self._gateway_data['pwd'],
+                    timeout=self._timeout
                     )
             except socket.gaierror as e:
                 raise Nested_SSH.Errors.FailedConnection(
                     "Connection failed at server: ", 
-                    self.gateway_data["ip"]
+                    self._gateway_data["ip"]
                     ) from e
             except socket.timeout as e:
                 raise Nested_SSH.Errors.FailedConnection(
                     "Conection failed at address, timeout: ", 
-                    self.gateway_data['ip']
+                    self._gateway_data['ip']
                     ) from e
             gateway_transport = gateway.get_transport()
-            local_addr = (str(self.gateway_data["ip"]), int(self.gateway_data['port']))
+            local_addr = (str(self._gateway_data["ip"]), int(self._gateway_data['port']))
             with paramiko.SSHClient() as target_machine:
                 target_machine.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 dest_addr = (str(machine_data["ip"]), int(machine_data["port"]))
@@ -79,7 +79,7 @@ class Nested_SSH():
                         username=machine_data["login"],
                         password=machine_data["pwd"],
                         sock=gateway_channel,
-                        timeout=self.timeout
+                        timeout=self._timeout
                         )
                         # pipe stdin to temp variable, not used
                     _, stdout, stderr = target_machine.exec_command(str_command)
